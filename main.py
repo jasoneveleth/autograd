@@ -4,16 +4,6 @@ from numpy import random, ones, allclose
 import jax.numpy as jjnp
 import jax
 
-def show(expr):
-    """Visualize the computational graph up to expr"""
-    def _show(self):
-        s = f"{self.id} [label=\"{self.f}:{self.val}\"]\n"
-        for c in self.parents:
-            s += f"{show(c)}\n"
-            s += f"{c.id} -> {self.id}\n"
-        return s
-    return "digraph g {\nnode [shape = \"circle\"]\n" + _show(expr) + "\n}"
-
 def grad(f):
     def ret(*args):
         # assume already nodes
@@ -30,21 +20,21 @@ def grad(f):
     return ret
 
 x = Node('x', random.random(8), [])
-# y = Node('y', random.random(10), [])
-# print(show(x + y))
-
-def f(x):
-    return jnp.sum(jnp.sin(jnp.b(jnp.w(x))))
-gf = grad(f)
-assert(allclose(gf(x).val, jnp.cos(jnp.b(jnp.w(x))).val@W))
 
 def g(x):
     return jnp.sum(jnp.w(x))
 gg = grad(g)
+# check that our gradient is right on simple function
 assert(allclose(gg(x).val, ones((1, 10))@ W))
+
+def f(x):
+    return jnp.sum(jnp.sin(jnp.b(jnp.w(x))))
+gf = grad(f)
+# check that our gradient is the same as the gradient I computed for `f`
+assert(allclose(gf(x).val, jnp.cos(jnp.b(jnp.w(x))).val@W))
 
 def jf(x):
     return jjnp.sum(jjnp.sin(W@x + bv))
 gjf = jax.grad(jf)
-print(gjf(x.val))
-print(gf(x))
+# check that JAX and my code agree
+assert(allclose(gjf(x.val), gf(x).val))
